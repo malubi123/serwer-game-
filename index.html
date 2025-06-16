@@ -16,23 +16,40 @@
     #files { margin-top: 2rem; }
     .file { margin: 0.5rem 0; }
     .preview { max-width: 200px; max-height: 200px; display: block; margin-top: 0.5rem; }
+    #page-select { margin-bottom: 1rem; }
   </style>
 </head>
 <body>
 
-<h1>Podstrona: <span id="page-name">...</span></h1>
+<h1>Wirtualna Podstrona: <span id="page-name">...</span></h1>
+
+<div id="page-select">
+  <input type="text" id="page-input" placeholder="Wpisz nazwę podstrony" />
+  <button onclick="goToPage()">Przejdź</button>
+</div>
 
 <div id="dropzone">Przeciągnij pliki tutaj</div>
 
 <div id="files"></div>
 
 <script>
-const pageName = window.location.hash.slice(2) || 'default';
-document.getElementById("page-name").textContent = pageName;
-
 let db;
+let currentPage = null;
 
-const openDB = () => {
+function goToPage() {
+  const name = document.getElementById("page-input").value.trim();
+  if (name) {
+    window.location.hash = "#/" + encodeURIComponent(name);
+  }
+}
+
+function getPageFromHash() {
+  const hash = window.location.hash;
+  if (!hash.startsWith("#/")) return "default";
+  return decodeURIComponent(hash.slice(2));
+}
+
+function openDB() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open("FileDatabase", 1);
     request.onerror = () => reject("IndexedDB error");
@@ -44,9 +61,12 @@ const openDB = () => {
       }
     };
   });
-};
+}
 
-const loadFiles = async () => {
+function loadFiles() {
+  currentPage = getPageFromHash();
+  document.getElementById("page-name").textContent = currentPage;
+
   const tx = db.transaction("files", "readonly");
   const store = tx.objectStore("files");
   const filesContainer = document.getElementById("files");
@@ -57,7 +77,7 @@ const loadFiles = async () => {
     const result = e.target.result;
     if (result) {
       const file = result.value;
-      if (file.page === pageName) {
+      if (file.page === currentPage) {
         const div = document.createElement("div");
         div.className = "file";
         div.innerHTML = `<strong>${file.name}</strong>`;
@@ -72,21 +92,21 @@ const loadFiles = async () => {
       result.continue();
     }
   };
-};
+}
 
-const saveFiles = async (files) => {
+function saveFiles(files) {
   const tx = db.transaction("files", "readwrite");
   const store = tx.objectStore("files");
   for (const file of files) {
     store.add({
-      page: pageName,
+      page: currentPage,
       name: file.name,
       type: file.type,
       blob: file
     });
   }
   tx.oncomplete = () => loadFiles();
-};
+}
 
 const dropzone = document.getElementById("dropzone");
 dropzone.addEventListener("dragover", e => {
@@ -96,14 +116,15 @@ dropzone.addEventListener("dragover", e => {
 dropzone.addEventListener("dragleave", () => {
   dropzone.style.backgroundColor = "#f9f9f9";
 });
-dropzone.addEventListener("drop", async e => {
+dropzone.addEventListener("drop", e => {
   e.preventDefault();
   dropzone.style.backgroundColor = "#f9f9f9";
   const files = e.dataTransfer.files;
-  await saveFiles(files);
+  saveFiles(files);
 });
 
-// Init app
+window.addEventListener("hashchange", loadFiles);
+
 openDB().then(database => {
   db = database;
   loadFiles();
