@@ -16,19 +16,24 @@
     #files { margin-top: 2rem; }
     .file { margin: 0.5rem 0; }
     .preview { max-width: 200px; max-height: 200px; display: block; margin-top: 0.5rem; }
-    #page-select { margin-bottom: 1rem; }
+    #page-select {
+      margin-bottom: 1rem;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
   </style>
 </head>
 <body>
 
-<h1>Wirtualna Podstrona: <span id="page-name">...</span></h1>
+<h1>📁 Podstrona: <span id="page-name">...</span></h1>
 
 <div id="page-select">
   <input type="text" id="page-input" placeholder="Wpisz nazwę podstrony" />
-  <button onclick="goToPage()">Przejdź</button>
+  <button id="go-button">Przejdź</button>
 </div>
 
-<div id="dropzone">Przeciągnij pliki tutaj</div>
+<div id="dropzone">🗂️ Przeciągnij pliki tutaj</div>
 
 <div id="files"></div>
 
@@ -66,6 +71,7 @@ function openDB() {
 function loadFiles() {
   currentPage = getPageFromHash();
   document.getElementById("page-name").textContent = currentPage;
+  document.getElementById("page-input").value = currentPage;
 
   const tx = db.transaction("files", "readonly");
   const store = tx.objectStore("files");
@@ -107,6 +113,8 @@ function saveFiles(files) {
   }
   tx.oncomplete = () => loadFiles();
 }
+
+document.getElementById("go-button").addEventListener("click", goToPage);
 
 const dropzone = document.getElementById("dropzone");
 dropzone.addEventListener("dragover", e => {
